@@ -1,0 +1,78 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "blog-adfdeltalake-adf"
+        },
+        "AzureSQL_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AzureSQL'",
+            "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().sqlserver_ls};Initial Catalog=@{linkedService().sqldatabase_ls}"
+        },
+        "BlobStorageDelta_properties_typeProperties_serviceEndpoint": {
+            "type": "string",
+            "defaultValue": "https://blogadfdeltalakestor.blob.core.windows.net"
+        },
+        "default_properties_sqlserver_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakesql.database.windows.net"
+        },
+        "default_properties_sqldatabase_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakedb"
+        },
+        "default_properties_stor_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakestor"
+        },
+        "containerUri": {
+            "type": "string",
+            "metadata": "URI to storage account containing linked ARM templates"
+        },
+        "containerSasToken": {
+            "type": "string",
+            "metadata": "Sas token to storage account containing linked ARM templates"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "blog-adfdeltalake-adf_ArmTemplate_0",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-02-01",
+            "properties": {
+                "mode": "incremental",
+                "templateLink": {
+                    "uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "factoryName": {
+                        "value": "[parameters('factoryName')]"
+                    },
+                    "AzureSQL_connectionString": {
+                        "value": "[parameters('AzureSQL_connectionString')]"
+                    },
+                    "default_properties_sqlserver_value": {
+                        "value": "[parameters('default_properties_sqlserver_value')]"
+                    },
+                    "default_properties_sqldatabase_value": {
+                        "value": "[parameters('default_properties_sqldatabase_value')]"
+                    },
+                    "default_properties_stor_value": {
+                        "value": "[parameters('default_properties_stor_value')]"
+                    },
+                    "BlobStorageDelta_properties_typeProperties_serviceEndpoint": {
+                        "value": "[parameters('BlobStorageDelta_properties_typeProperties_serviceEndpoint')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "blog-adfdeltalake-adf"
+        },
+        "dataFactory_properties_globalParameters_sqlserver_value": {
+            "value": "blogadfdeltalakesql.database.windows.net"
+        },
+        "dataFactory_properties_globalParameters_sqldatabase_value": {
+            "value": "blogadfdeltalakedb"
+        },
+        "dataFactory_properties_globalParameters_stor_value": {
+            "value": "blogadfdeltalakestor"
+        },
+        "dataFactory_location": {
+            "value": "westeurope"
+        },
+        "dataFactory_identity_type": {
+            "value": "SystemAssigned"
+        }
+    }
+}

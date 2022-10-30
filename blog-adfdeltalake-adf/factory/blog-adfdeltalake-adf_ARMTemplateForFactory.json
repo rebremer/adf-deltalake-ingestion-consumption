@@ -1,0 +1,64 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "blog-adfdeltalake-adf"
+        },
+        "dataFactory_properties_globalParameters_sqlserver_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakesql.database.windows.net"
+        },
+        "dataFactory_properties_globalParameters_sqldatabase_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakedb"
+        },
+        "dataFactory_properties_globalParameters_stor_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakestor"
+        },
+        "dataFactory_location": {
+            "type": "string",
+            "defaultValue": "westeurope"
+        },
+        "dataFactory_identity_type": {
+            "type": "string",
+            "defaultValue": "SystemAssigned"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[parameters('factoryName')]",
+            "type": "Microsoft.DataFactory/factories",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "globalParameters": {
+                    "sqlserver": {
+                        "type": "string",
+                        "value": "[parameters('dataFactory_properties_globalParameters_sqlserver_value')]"
+                    },
+                    "sqldatabase": {
+                        "type": "string",
+                        "value": "[parameters('dataFactory_properties_globalParameters_sqldatabase_value')]"
+                    },
+                    "stor": {
+                        "type": "string",
+                        "value": "[parameters('dataFactory_properties_globalParameters_stor_value')]"
+                    }
+                }
+            },
+            "dependsOn": [],
+            "location": "[parameters('dataFactory_location')]",
+            "identity": {
+                "type": "[parameters('dataFactory_identity_type')]",
+                "principalId": "5cce3fbb-60d2-4c82-9976-b4cc03bbb47d",
+                "tenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+            }
+        }
+    ]
+}

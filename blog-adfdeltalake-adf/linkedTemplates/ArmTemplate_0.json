@@ -1,0 +1,866 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "blog-adfdeltalake-adf"
+        },
+        "AzureSQL_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'AzureSQL'",
+            "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().sqlserver_ls};Initial Catalog=@{linkedService().sqldatabase_ls}"
+        },
+        "default_properties_sqlserver_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakesql.database.windows.net"
+        },
+        "default_properties_sqldatabase_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakedb"
+        },
+        "default_properties_stor_value": {
+            "type": "string",
+            "defaultValue": "blogadfdeltalakestor"
+        },
+        "BlobStorageDelta_properties_typeProperties_serviceEndpoint": {
+            "type": "string",
+            "defaultValue": "https://blogadfdeltalakestor.blob.core.windows.net"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/default')]",
+            "type": "Microsoft.DataFactory/factories/globalparameters",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "sqlserver": {
+                    "type": "string",
+                    "value": "[parameters('default_properties_sqlserver_value')]"
+                },
+                "sqldatabase": {
+                    "type": "string",
+                    "value": "[parameters('default_properties_sqldatabase_value')]"
+                },
+                "stor": {
+                    "type": "string",
+                    "value": "[parameters('default_properties_stor_value')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSQL')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "parameters": {
+                    "sqlserver_ls": {
+                        "type": "string"
+                    },
+                    "sqldatabase_ls": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": "[parameters('AzureSQL_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/BlobStorageDelta')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "serviceEndpoint": "[parameters('BlobStorageDelta_properties_typeProperties_serviceEndpoint')]",
+                    "accountKind": "StorageV2"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureSqlTable1')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureSQL",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "sqlserver_ls": {
+                            "value": "@dataset().sqlserver_ds",
+                            "type": "Expression"
+                        },
+                        "sqldatabase_ls": {
+                            "value": "@dataset().sqlsdatabase_ds",
+                            "type": "Expression"
+                        }
+                    }
+                },
+                "parameters": {
+                    "sqlserver_ds": {
+                        "type": "string",
+                        "defaultValue": "blogadfdeltalakesql.database.windows.net"
+                    },
+                    "sqlsdatabase_ds": {
+                        "type": "string",
+                        "defaultValue": "blogadfdeltalakedb"
+                    }
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "movie",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "version",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "update_time",
+                        "type": "date"
+                    },
+                    {
+                        "name": "title",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "genres",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "year",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Rating",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Rotten_tomato",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "description",
+                        "type": "nvarchar"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "movies_version"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureSQL')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DelimitedText1')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "BlobStorageDelta",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "foldername": {
+                        "type": "string"
+                    },
+                    "containername": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "folderPath": {
+                            "value": "@dataset().foldername",
+                            "type": "Expression"
+                        },
+                        "container": {
+                            "value": "@dataset().containername",
+                            "type": "Expression"
+                        }
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/BlobStorageDelta')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/deltatostor_delta')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "linkedService": {
+                                "referenceName": "BlobStorageDelta",
+                                "type": "LinkedServiceReference"
+                            },
+                            "name": "source1"
+                        },
+                        {
+                            "linkedService": {
+                                "referenceName": "BlobStorageDelta",
+                                "type": "LinkedServiceReference"
+                            },
+                            "name": "source2"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "DelimitedText1",
+                                "type": "DatasetReference"
+                            },
+                            "name": "sink1"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "exists1"
+                        }
+                    ],
+                    "scriptLines": [
+                        "parameters{",
+                        "     deltafoldername as string,",
+                        "     latest_delta_version as integer",
+                        "}",
+                        "source(output(",
+                        "          movie as integer,",
+                        "          version as integer,",
+                        "          update_time as date,",
+                        "          title as string,",
+                        "          genres as string,",
+                        "          year as string,",
+                        "          Rating as string,",
+                        "          Rotten_tomato as string,",
+                        "          description as string",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false,",
+                        "     format: 'delta',",
+                        "     fileSystem: 'deltamovie',",
+                        "     folderPath: ($deltafoldername)) ~> source1",
+                        "source(output(",
+                        "          movie as integer,",
+                        "          version as integer,",
+                        "          update_time as date,",
+                        "          title as string,",
+                        "          genres as string,",
+                        "          year as string,",
+                        "          Rating as string,",
+                        "          Rotten_tomato as string,",
+                        "          description as string",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false,",
+                        "     format: 'delta',",
+                        "     versionAsOf: (iif($latest_delta_version ==0, 0, $latest_delta_version-1)),",
+                        "     fileSystem: 'deltamovie',",
+                        "     folderPath: ($deltafoldername)) ~> source2",
+                        "source1, source2 exists(source1@movie == source2@movie",
+                        "     && source1@version == source2@version && $latest_delta_version > 0,",
+                        "     negate:true,",
+                        "     broadcast: 'auto')~> exists1",
+                        "exists1 sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true,",
+                        "     partitionBy('hash', 1)) ~> sink1"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/BlobStorageDelta')]",
+                "[concat(variables('factoryId'), '/datasets/DelimitedText1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/deltatostor_snapshot')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "linkedService": {
+                                "referenceName": "BlobStorageDelta",
+                                "type": "LinkedServiceReference"
+                            },
+                            "name": "source1"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "DelimitedText1",
+                                "type": "DatasetReference"
+                            },
+                            "name": "sink1"
+                        }
+                    ],
+                    "transformations": [],
+                    "scriptLines": [
+                        "parameters{",
+                        "     deltafoldername as string",
+                        "}",
+                        "source(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false,",
+                        "     format: 'delta',",
+                        "     fileSystem: 'deltamovie',",
+                        "     folderPath: ($deltafoldername)) ~> source1",
+                        "source1 sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true,",
+                        "     partitionBy('hash', 1)) ~> sink1"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/BlobStorageDelta')]",
+                "[concat(variables('factoryId'), '/datasets/DelimitedText1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/sqltodelta')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "AzureSqlTable1",
+                                "type": "DatasetReference"
+                            },
+                            "name": "source1"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "linkedService": {
+                                "referenceName": "BlobStorageDelta",
+                                "type": "LinkedServiceReference"
+                            },
+                            "name": "sink1"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "alterRow1"
+                        }
+                    ],
+                    "scriptLines": [
+                        "parameters{",
+                        "     query as string,",
+                        "     foldername as string",
+                        "}",
+                        "source(output(",
+                        "          movie as integer,",
+                        "          version as integer,",
+                        "          update_time as date,",
+                        "          title as string,",
+                        "          genres as string,",
+                        "          year as string,",
+                        "          Rating as string,",
+                        "          Rotten_tomato as string,",
+                        "          description as string",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     isolationLevel: 'READ_UNCOMMITTED',",
+                        "     query: ($query),",
+                        "     format: 'query') ~> source1",
+                        "source1 alterRow(upsertIf(true())) ~> alterRow1",
+                        "alterRow1 sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     format: 'delta',",
+                        "     fileSystem: 'deltamovie',",
+                        "     folderPath: ($foldername),",
+                        "     mergeSchema: false,",
+                        "     autoCompact: true,",
+                        "     optimizedWrite: true,",
+                        "     vacuum: 0,",
+                        "     deletable:false,",
+                        "     insertable:true,",
+                        "     updateable:false,",
+                        "     upsertable:true,",
+                        "     keys:['movie','version'],",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true,",
+                        "     partitionBy('key',",
+                        "          0,",
+                        "          update_time",
+                        "     )) ~> sink1"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/AzureSqlTable1')]",
+                "[concat(variables('factoryId'), '/linkedServices/BlobStorageDelta')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/2_1_ingestion_rawdata_snapshot')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "sqltodelta",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "sqltodelta",
+                                "type": "DataFlowReference",
+                                "parameters": {
+                                    "query": {
+                                        "value": "'@{string('SELECT * FROM [dbo].[movies_version]')}'",
+                                        "type": "Expression"
+                                    },
+                                    "foldername": {
+                                        "value": "'@{string('2_1_rawdata_snapshot')}'",
+                                        "type": "Expression"
+                                    }
+                                },
+                                "datasetParameters": {
+                                    "source1": {
+                                        "sqlserver_ds": {
+                                            "value": "@pipeline().globalParameters.sqlserver",
+                                            "type": "Expression"
+                                        },
+                                        "sqlsdatabase_ds": {
+                                            "value": "@pipeline().globalParameters.sqldatabase",
+                                            "type": "Expression"
+                                        }
+                                    },
+                                    "sink1": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {},
+                    "cancelAfter": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2022-10-27T17:22:17Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/sqltodelta')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/2_2_ingestion_rawdata_delta')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "sqltodelta",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "sqltodelta",
+                                "type": "DataFlowReference",
+                                "parameters": {
+                                    "query": {
+                                        "value": "'@{string('SELECT * FROM [dbo].[movies_version] WHERE version = 2')}'",
+                                        "type": "Expression"
+                                    },
+                                    "foldername": {
+                                        "value": "'@{string('2_2_rawdata_delta')}'",
+                                        "type": "Expression"
+                                    }
+                                },
+                                "datasetParameters": {
+                                    "source1": {
+                                        "sqlserver_ds": {
+                                            "value": "@pipeline().globalParameters.sqlserver",
+                                            "type": "Expression"
+                                        },
+                                        "sqlsdatabase_ds": {
+                                            "value": "@pipeline().globalParameters.sqldatabase",
+                                            "type": "Expression"
+                                        }
+                                    },
+                                    "sink1": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {},
+                    "cancelAfter": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2022-10-28T11:35:13Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/sqltodelta')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/2_3_ingestion_endofday_snapshot')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "sqltodelta",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "sqltodelta",
+                                "type": "DataFlowReference",
+                                "parameters": {
+                                    "query": {
+                                        "value": "'@{string('SELECT [movie],MAX([version]) as version,MAX([update_time]) as update_time,MAX([title]) as title,MAX([genres]) as genres,AVG(CAST([year] as int)) as year,AVG(CAST([Rating] as int)) as Rating,MAX([Rotten_tomato]) as Rotten_tomato,MAX([description]) as description FROM [dbo].[movies_version] GROUP BY movie')}'",
+                                        "type": "Expression"
+                                    },
+                                    "foldername": {
+                                        "value": "'@{string('2_3_endofday_snapshot')}'",
+                                        "type": "Expression"
+                                    }
+                                },
+                                "datasetParameters": {
+                                    "source1": {
+                                        "sqlserver_ds": {
+                                            "value": "@pipeline().globalParameters.sqlserver",
+                                            "type": "Expression"
+                                        },
+                                        "sqlsdatabase_ds": {
+                                            "value": "@pipeline().globalParameters.sqldatabase",
+                                            "type": "Expression"
+                                        }
+                                    },
+                                    "sink1": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {},
+                    "cancelAfter": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2022-10-27T17:22:17Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/sqltodelta')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/2_4_ingestion_endofday_delta')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "sqltodelta",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "sqltodelta",
+                                "type": "DataFlowReference",
+                                "parameters": {
+                                    "query": {
+                                        "value": "'@{string('SELECT [movie],MAX([version]) as version,MAX([update_time]) as update_time,MAX([title]) as title,MAX([genres]) as genres,AVG(CAST([year] as int)) as year,AVG(CAST([Rating] as int)) as Rating,MAX([Rotten_tomato]) as Rotten_tomato,MAX([description]) as description FROM [dbo].[movies_version] where version = 1 GROUP BY movie')}'",
+                                        "type": "Expression"
+                                    },
+                                    "foldername": {
+                                        "value": "'@{string('2_4_endofday_delta')}'",
+                                        "type": "Expression"
+                                    }
+                                },
+                                "datasetParameters": {
+                                    "source1": {
+                                        "sqlserver_ds": {
+                                            "value": "@pipeline().globalParameters.sqlserver",
+                                            "type": "Expression"
+                                        },
+                                        "sqlsdatabase_ds": {
+                                            "value": "@pipeline().globalParameters.sqldatabase",
+                                            "type": "Expression"
+                                        }
+                                    },
+                                    "sink1": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {},
+                    "cancelAfter": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2022-10-27T17:22:17Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/sqltodelta')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/3_1_consumption_rawdata_snapshot')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "deltatostor_snapshot",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "deltatostor_snapshot",
+                                "type": "DataFlowReference",
+                                "parameters": {
+                                    "deltafoldername": {
+                                        "value": "'@{string('2_1_rawdata_snapshot')}'",
+                                        "type": "Expression"
+                                    }
+                                },
+                                "datasetParameters": {
+                                    "source1": {},
+                                    "sink1": {
+                                        "foldername": "3_1_rawdata_snapshot_csv",
+                                        "containername": "copydata"
+                                    }
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {},
+                    "cancelAfter": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2022-10-28T07:15:40Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/deltatostor_snapshot')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/3_2_consumption_rawdata_delta')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "deltatostor_delta",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "Get deltaversions",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "deltatostor_delta",
+                                "type": "DataFlowReference",
+                                "parameters": {
+                                    "deltafoldername": {
+                                        "value": "'@{string('2_2_rawdata_delta')}'",
+                                        "type": "Expression"
+                                    },
+                                    "latest_delta_version": {
+                                        "value": "@int(substring(last(activity('Get deltaversions').output.childItems).name,0,20))",
+                                        "type": "Expression"
+                                    }
+                                },
+                                "datasetParameters": {
+                                    "source1": {},
+                                    "source2": {},
+                                    "sink1": {
+                                        "foldername": "3_2_rawdata_delta_csv",
+                                        "containername": "copydata"
+                                    }
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    },
+                    {
+                        "name": "Get deltaversions",
+                        "type": "GetMetadata",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataset": {
+                                "referenceName": "DelimitedText1",
+                                "type": "DatasetReference",
+                                "parameters": {
+                                    "foldername": "2_2_rawdata_delta/_delta_log",
+                                    "containername": "deltamovie"
+                                }
+                            },
+                            "fieldList": [
+                                "childItems"
+                            ],
+                            "storeSettings": {
+                                "type": "AzureBlobStorageReadSettings",
+                                "recursive": true,
+                                "modifiedDatetimeStart": "2022-10-26T00:00:00Z",
+                                "modifiedDatetimeEnd": "2022-10-31T00:00:00Z",
+                                "enablePartitionDiscovery": false
+                            },
+                            "formatSettings": {
+                                "type": "DelimitedTextReadSettings"
+                            }
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {},
+                    "cancelAfter": {}
+                },
+                "variables": {
+                    "testrb": {
+                        "type": "String"
+                    }
+                },
+                "annotations": [],
+                "lastPublishTime": "2022-10-28T08:51:53Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/deltatostor_delta')]",
+                "[concat(variables('factoryId'), '/datasets/DelimitedText1')]"
+            ]
+        }
+    ]
+}
